@@ -1,0 +1,18 @@
+#ifndef __platform_setup_h__
+#define __platform_setup_h__
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifndef DEFAULT_WINDOW_WIDTH
+#define DEFAULT_WINDOW_WIDTH  1280
+#endif
+#ifndef DEFAULT_WINDOW_HEIGHT
+#define DEFAULT_WINDOW_HEIGHT  720
+#endif
+#ifndef DEFAULT_CAPTION
+#define DEFAULT_CAPTION "Coda Engine"
+#endif
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#endif /* __platform_setup_h__ */

@@ -1,0 +1,8 @@
+{
+  "toolchain": "gcc",
+  "renderer": "Opengl",
+  "windowing": "Disable",
+  "tests": "Disable",
+  "timestamp": "2025-11-09T19:13:31Z",
+  "build_dir": "build"
+}
