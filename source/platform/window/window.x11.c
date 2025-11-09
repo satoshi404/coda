@@ -152,7 +152,7 @@ void __namespace( Poll ) ( void )
                 kbEvent.keycode = event.xkey.keycode;
                 kbEvent.state = (event.type == KeyPress) ? KEY_STATE_DOWN : KEY_STATE_UP;
 
-                event_dispatch(&kbEvent);
+                core_EventDispache( &kbEvent );
 
                 if ( event.type == KeyPress && event.xkey.keycode == 9 ) windowState.Running = False;
                 
@@ -173,7 +173,7 @@ void __namespace( Poll ) ( void )
                     winEvent.width = event.xconfigure.width;
                     winEvent.height = event.xconfigure.height;
                     
-                    event_dispatch( &winEvent );
+                    core_EventDispache( &winEvent );
                     
                     // TODO: glx make this
                         // ** Update viewport
@@ -207,7 +207,7 @@ void __namespace( Poll ) ( void )
                         break;
                 }
                 
-                event_dispatch( &mouseEvent );
+                core_EventDispache( &mouseEvent );
                
                 break;
             }
@@ -221,7 +221,7 @@ void __namespace( Poll ) ( void )
                 mouseEvent.y = event.xmotion.y;
                 mouseEvent.button = MOUSE_BUTTON_LEFT; 
                 
-                event_dispatch( &mouseEvent );
+                core_EventDispache( &mouseEvent );
 
                 break;
             }

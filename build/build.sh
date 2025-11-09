@@ -1,14 +1,9 @@
 #!/bin/bash
 
-# ══════════════════════════════════════════════════════════════
-#  Build Script - Compila o projeto Coda
-# ══════════════════════════════════════════════════════════════
+################################################################################################################
 
 set -e  # Exit on error
 
-# ──────────────────────────────────────
-#  Colors
-# ──────────────────────────────────────
 RED="\033[31m"
 GREEN="\033[32m"
 YELLOW="\033[33m"
@@ -20,27 +15,24 @@ RESET="\033[0m"
 
 print() { printf '%b\n' "$1"; }
 
-# ──────────────────────────────────────
-#  Configuration from environment
-# ──────────────────────────────────────
+################################################################################################################
+
 TOOLCHAIN="${CODA_TOOLCHAIN:-gcc}"
 GLX="${CODA_GLX:-Opengl}"
-WIN="${CODA_WIN:-Disable}"
+WINE="${CODA_WINE:-Disable}"
 TEST="${CODA_TEST:-Disable}"
 BUILD_DIR="${CODA_BUILD_DIR:-build}"
 
-# ──────────────────────────────────────
-#  Directories
-# ──────────────────────────────────────
+################################################################################################################
+
 SRC_DIR="source"
 OBJ_DIR="$BUILD_DIR/obj"
 DEP_DIR="$BUILD_DIR/deps"
 LIB_DIR="$BUILD_DIR/lib"
 BIN_DIR="$BUILD_DIR/bin"
 
-# ──────────────────────────────────────
-#  Detect OS
-# ──────────────────────────────────────
+################################################################################################################
+
 detect_os() {
     case "$(uname -s)" in
         Linux*)     OS="Linux";;
@@ -50,9 +42,8 @@ detect_os() {
     esac
 }
 
-# ──────────────────────────────────────
-#  Setup compiler and flags
-# ──────────────────────────────────────
+################################################################################################################
+
 setup_compiler() {
     case "$TOOLCHAIN" in
         gcc)
@@ -68,7 +59,7 @@ setup_compiler() {
             CXXFLAGS="-Wall -Wextra -O2 -fPIC -std=c++17"
             ;;
         msvc)
-            if [ "$OS" != "Windows" ]; then
+            if [ "$OS" != "WINEdows" ]; then
                 print "${RED}Error: MSVC only available on Windows${RESET}"
                 exit 1
             fi
@@ -86,21 +77,24 @@ setup_compiler() {
     # Graphics API flags
     case "$GLX" in
         Opengl)
-            CFLAGS="$CFLAGS -DUSE_OPENGL"
-            CXXFLAGS="$CXXFLAGS -DUSE_OPENGL"
-            LIBS="-lGL -lX11"
+            CFLAGS="$CFLAGS -DGLX_OPENGL"
+            CXXFLAGS="$CXXFLAGS -DGLX_OPENGL"
+            LIBS="-lGL"
             ;;
         Vulkan)
-            CFLAGS="$CFLAGS -DUSE_VULKAN"
-            CXXFLAGS="$CXXFLAGS -DUSE_VULKAN"
-            LIBS="-lvulkan -lX11"
+            CFLAGS="$CFLAGS -DGLX_VULKAN"
+            CXXFLAGS="$CXXFLAGS -DGLX_VULKAN"
+            LIBS="-lvulkan"
             ;;
     esac
     
-    # Window flags ( Run wine for run coda.exe in linux )
-    if [ "$WIN" = "Enable" ]; then
-        CFLAGS="$CFLAGS -DENABLE_WINDOWING"
-        CXXFLAGS="$CXXFLAGS -DENABLE_WINDOWING"
+    # Wine flags ( Run Wine for run coda.exe in linux )
+    if [ "$WINE" = "Enable" ]; then
+        CFLAGS="$CFLAGS -DENABLE_WINEDOWINEG"
+        CXXFLAGS="$CXXFLAGS -DENABLE_WINEDOWINEG"
+
+        # Run wine here
+
     fi
     
     # Test flags
@@ -111,7 +105,7 @@ setup_compiler() {
     
     # OS-specific flags
     if [ "$OS" = "Linux" ]; then
-        LIBS="$LIBS -ldl -lpthread -lm"
+        LIBS="$LIBS -lX11 -ldl -lpthread -lm"
         SHARED_FLAG="-shared"
         LIB_EXT=".so"
         EXE_EXT=""
@@ -120,17 +114,17 @@ setup_compiler() {
         SHARED_FLAG="-shared"
         LIB_EXT=".dll"
         EXE_EXT=".exe"
-    elif [ "$OS" = "Mac" ]; then
-        LIBS="$LIBS -framework OpenGL -framework Cocoa"
-        SHARED_FLAG="-dynamiclib"
-        LIB_EXT=".dylib"
-        EXE_EXT=""
+    # elif [ "$OS" = "Mac" ]; then
+    #     LIBS="$LIBS -framework OpenGL -framework Cocoa"
+    #     SHARED_FLAG="-dynamiclib"
+    #     LIB_EXT=".dylib"
+    #     EXE_EXT=""
+    # fi
     fi
 }
 
-# ──────────────────────────────────────
-#  Compile source file
-# ──────────────────────────────────────
+################################################################################################################
+
 compile_source() {
     local src_file="$1"
     local obj_file="$2"
@@ -157,9 +151,8 @@ compile_source() {
     fi
 }
 
-# ──────────────────────────────────────
-#  Main build process
-# ──────────────────────────────────────
+################################################################################################################
+
 print
 print "${CYAN}${BOLD}════════════════════════════════════════${RESET}"
 print "${CYAN}${BOLD}     Coda Build System${RESET}"
@@ -192,6 +185,9 @@ if [ "$total" -eq 0 ]; then
     print "${YELLOW}Warning: No source files found in $SRC_DIR${RESET}"
     exit 0
 fi
+
+################################################################################################################
+
 
 while IFS= read -r src_file; do
     count=$((count + 1))
@@ -232,8 +228,8 @@ if [ -z "$obj_files" ]; then
     exit 0
 fi
 
-# Link shared library (if windowing enabled)
-if [ "$WIN" = "Enable" ]; then
+# Link shared library (if Wine in linux enabled)
+if [ "$WINE" = "Enable" ]; then
     lib_objs=$(echo "$obj_files" | grep -v "main.o" || true)
     
     if [ -n "$lib_objs" ]; then
@@ -249,6 +245,9 @@ if [ "$WIN" = "Enable" ]; then
         print "${GREEN}✓${RESET} Library created"
     fi
 fi
+
+################################################################################################################
+
 
 # Link executable
 output="$BIN_DIR/coda${EXE_EXT}"
@@ -271,7 +270,9 @@ print
 # Show output summary
 print "${BLUE}Output:${RESET}"
 print "  ${GREEN}Executable:${RESET} $BIN_DIR/coda${EXE_EXT}"
-if [ "$WIN" = "Enable" ]; then
+if [ "$WINE" = "Enable" ]; then
     print "  ${GREEN}Library:${RESET}    $LIB_DIR/coda${LIB_EXT}"
 fi
 print
+
+################################################################################################################

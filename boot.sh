@@ -1,12 +1,13 @@
 #!/bin/bash
 
+################################################################################################################
+
 CODA_VERSION="0.1 (BETA)"
 CODA_DATE="09/11/2025"
 CODA_AUTHOR="Satoshi"
 
-# ──────────────────────────────────────
-#  ANSI color codes (easy to read/maintain)
-# ──────────────────────────────────────
+################################################################################################################
+
 RED="\033[31m"
 GREEN="\033[32m"
 YELLOW="\033[33m"
@@ -16,16 +17,14 @@ CYAN="\033[36m"
 BOLD="\033[1m"
 RESET="\033[0m"
 
-# ──────────────────────────────────────
-#  Print function (always adds a newline)
-# ──────────────────────────────────────
+################################################################################################################
+
 print() {
     printf '%b\n' "$1"
 }
 
-# ──────────────────────────────────────
-#  Help function – now colorful
-# ──────────────────────────────────────
+################################################################################################################
+
 help() {
     print
     print "${CYAN}${BOLD}=========================================================${RESET}"
@@ -44,7 +43,7 @@ help() {
     print
     print "  ${GREEN}toolchain=VALUE${RESET}: Set toolchain (default: ${MAGENTA}gcc${RESET}) [ ${MAGENTA}gcc${RESET}, ${MAGENTA}msvc${RESET}, ${MAGENTA}llvm${RESET} ]"
     print "  ${GREEN}glx=VALUE${RESET}:       Set renderer (default: ${MAGENTA}Opengl${RESET}) [ ${MAGENTA}Opengl${RESET}, ${MAGENTA}Vulkan${RESET} ]"
-    print "  ${GREEN}win=VALUE${RESET}:       Coda win platform (default: ${MAGENTA}Disable${RESET}) [ ${MAGENTA}Enable${RESET}, ${MAGENTA}Disable${RESET} ]"
+    print "  ${GREEN}wine=VALUE${RESET}:      Run Coda in wine (default: ${MAGENTA}Disable${RESET}) [ ${MAGENTA}Enable${RESET}, ${MAGENTA}Disable${RESET} ]"
     print "  ${GREEN}test=VALUE${RESET}:      Code tests (default: ${MAGENTA}Disable${RESET}) [ ${MAGENTA}Enable${RESET}, ${MAGENTA}Disable${RESET} ]"
     print
     print "${YELLOW}Commands:${RESET}"
@@ -55,38 +54,35 @@ help() {
     print
     print "${YELLOW}Examples:${RESET}"
     print "  ${BOLD}./boot.sh --build${RESET}"
-    print "  ${BOLD}./boot.sh toolchain=llvm glx=Vulkan --build${RESET}"
+    print "  ${BOLD}./boot.sh toolchain=gcc glx=Vulkan --build${RESET}"
     print "  ${BOLD}./boot.sh test=Enable --run${RESET}"
     print
 }
 
-# ──────────────────────────────────────
-#  Default values
-# ──────────────────────────────────────
+################################################################################################################
+
 TOOLCHAIN="gcc"
 GLX="Opengl"
-WIN="Disable"
+WINE="Disable"
 TEST="Disable"
 COMMAND=""
 BUILD_DIR="build"
 
-# ──────────────────────────────────────
-#  Info function
-# ──────────────────────────────────────
+################################################################################################################
+
 info() {
     print 
     print "${BLUE}${BOLD}Configuration:${RESET}"
     print "  ${GREEN}Toolchain (toolchain):${RESET}  ${MAGENTA}${TOOLCHAIN}${RESET}"
     print "  ${GREEN}Renderer (glx):${RESET}         ${MAGENTA}${GLX}${RESET}"
-    print "  ${GREEN}Windowing (win):${RESET}        ${MAGENTA}${WIN}${RESET}"
+    print "  ${GREEN}Wine (wine):${RESET}        ${MAGENTA}${WINE}${RESET}"
     print "  ${GREEN}Tests (test):${RESET}           ${MAGENTA}${TEST}${RESET}"
     print "  ${GREEN}Build directory:${RESET}        ${MAGENTA}${BUILD_DIR}${RESET}"
     print
 }
 
-# ──────────────────────────────────────
-#  Generate info.json in build directory
-# ──────────────────────────────────────
+################################################################################################################
+
 generate_info_json() {
     mkdir -p "$BUILD_DIR"
     
@@ -94,7 +90,7 @@ generate_info_json() {
 {
   "toolchain": "$TOOLCHAIN",
   "renderer": "$GLX",
-  "windowing": "$WIN",
+  "wine": "$WINE",
   "tests": "$TEST",
   "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "build_dir": "$BUILD_DIR"
@@ -104,9 +100,8 @@ EOF
     print "${GREEN}✓${RESET} Generated ${BOLD}$BUILD_DIR/info.json${RESET}"
 }
 
-# ──────────────────────────────────────
-#  Run function (executes run.sh)
-# ──────────────────────────────────────
+################################################################################################################
+
 run_coda() {
     print
     print "${BLUE}${BOLD}Running Coda...${RESET}"
@@ -124,15 +119,31 @@ run_coda() {
     # Pass configuration as environment variables
     export CODA_TOOLCHAIN="$TOOLCHAIN"
     export CODA_GLX="$GLX"
-    export CODA_WIN="$WIN"
+    export CODA_WINE="$WINE"
     export CODA_TEST="$TEST"
     
     ./build/run.sh
 }
 
-# ──────────────────────────────────────
-#  Build function (executes build.sh)
-# ──────────────────────────────────────
+################################################################################################################
+
+clean_coda() 
+{
+    print 
+    print "${BLUE}${BOLD}Cleaning coda...${RESET}"
+    print
+
+    # Test clean
+    rm build/obj/* -rf
+    rm build/deps/* -rf
+    rm build/bin/* -rf
+    rm build/*.json
+
+    print "${GREEN}${BOLD}✓ Clean completed!${RESET}"
+}
+
+################################################################################################################
+
 build_coda() {
     print
     print "${BLUE}${BOLD}Building Coda...${RESET}"
@@ -153,7 +164,7 @@ build_coda() {
     # Pass configuration as environment variables
     export CODA_TOOLCHAIN="$TOOLCHAIN"
     export CODA_GLX="$GLX"
-    export CODA_WIN="$WIN"
+    export CODA_WINE="$WINE"
     export CODA_TEST="$TEST"
     export CODA_BUILD_DIR="$BUILD_DIR"
     
@@ -176,9 +187,8 @@ build_coda() {
     fi
 }
 
-# ──────────────────────────────────────
-#  Parse arguments
-# ──────────────────────────────────────
+################################################################################################################
+
 for arg in "$@"; do
     case "$arg" in
         toolchain=*)
@@ -195,11 +205,11 @@ for arg in "$@"; do
                 *) print "${RED}Error: Invalid glx value → ${VALUE}${RESET}"; help; exit 1 ;;
             esac
             ;;
-        win=*)
+        wine=*)
             VALUE="${arg#*=}"
             case "$VALUE" in
-                Enable|Disable) WIN="$VALUE" ;;
-                *) print "${RED}Error: Invalid win value → ${VALUE}${RESET}"; help; exit 1 ;;
+                Enable|Disable) WINE="$VALUE" ;;
+                *) print "${RED}Error: Invalid WINE value → ${VALUE}${RESET}"; help; exit 1 ;;
             esac
             ;;
         test=*)
@@ -218,6 +228,10 @@ for arg in "$@"; do
         -b|--build)
             COMMAND="build"
             ;;
+        -c|--clean)
+            COMMAND="clean"
+            ;;
+      
         -h|--help)
             help
             exit 0
@@ -230,23 +244,18 @@ for arg in "$@"; do
     esac
 done
 
-# ──────────────────────────────────────
-#  Show help if no arguments
-# ──────────────────────────────────────
+################################################################################################################
+
 if [ $# -eq 0 ]; then
     help
     exit 0
 fi
 
-# ──────────────────────────────────────
-#  Execute command
-# ──────────────────────────────────────
 case "$COMMAND" in
     info)
         info
         ;;
     run)
-        info
         generate_info_json
         run_coda
         ;;
@@ -254,6 +263,10 @@ case "$COMMAND" in
         info
         build_coda
         ;;
+    clean)
+        clean_coda
+        ;;
+  
     "")
         print "${RED}Error: No command specified${RESET}"
         print "${YELLOW}Use --run, --build, or --info${RESET}"
@@ -262,3 +275,5 @@ case "$COMMAND" in
         exit 1
         ;;
 esac
+
+################################################################################################################

@@ -1,12 +1,7 @@
 #!/bin/bash
 
-# ══════════════════════════════════════════════════════════════
-#  Run Script - Executa o aplicativo Coda
-# ══════════════════════════════════════════════════════════════
+################################################################################################################
 
-# ──────────────────────────────────────
-#  Colors
-# ──────────────────────────────────────
 RED="\033[31m"
 GREEN="\033[32m"
 YELLOW="\033[33m"
@@ -18,21 +13,19 @@ RESET="\033[0m"
 
 print() { printf '%b\n' "$1"; }
 
-# ──────────────────────────────────────
-#  Configuration from environment
-# ──────────────────────────────────────
+################################################################################################################
+
 TOOLCHAIN="${CODA_TOOLCHAIN:-gcc}"
 GLX="${CODA_GLX:-Opengl}"
-WIN="${CODA_WIN:-Disable}"
+WINE="${CODA_WINE:-Disable}"
 TEST="${CODA_TEST:-Disable}"
 BUILD_DIR="${CODA_BUILD_DIR:-build}"
 
 BIN_DIR="$BUILD_DIR/bin"
 LIB_DIR="$BUILD_DIR/lib"
 
-# ──────────────────────────────────────
-#  Detect OS and set extensions
-# ──────────────────────────────────────
+################################################################################################################
+
 detect_os() {
     case "$(uname -s)" in
         Linux*)     
@@ -58,9 +51,8 @@ detect_os() {
     esac
 }
 
-# ──────────────────────────────────────
-#  Setup library path for runtime linking
-# ──────────────────────────────────────
+################################################################################################################
+
 setup_library_path() {
     if [ ! -d "$LIB_DIR" ]; then
         return
@@ -91,9 +83,6 @@ setup_library_path() {
     esac
 }
 
-# ──────────────────────────────────────
-#  Check dependencies (Linux/Mac only)
-# ──────────────────────────────────────
 check_dependencies() {
     local executable="$1"
     
@@ -210,11 +199,11 @@ print "${BLUE}Configuration:${RESET}"
 print "  ${GREEN}OS:${RESET}         ${MAGENTA}$OS${RESET}"
 print "  ${GREEN}Toolchain:${RESET}  ${MAGENTA}$TOOLCHAIN${RESET}"
 print "  ${GREEN}Renderer:${RESET}   ${MAGENTA}$GLX${RESET}"
-print "  ${GREEN}Windowing:${RESET}  ${MAGENTA}$WIN${RESET}"
+print "  ${GREEN}Wine:${RESET}  ${MAGENTA}$WINE${RESET}"
 print "  ${GREEN}Tests:${RESET}      ${MAGENTA}$TEST${RESET}"
 
-# Setup library paths if windowing is enabled
-if [ "$WIN" = "Enable" ]; then
+# Setup library paths if WINEdoWINEg is enabled
+if [ "$WINE" = "Enable" ]; then
     print
     setup_library_path
     list_libraries
@@ -247,3 +236,5 @@ fi
 print
 
 exit $exit_code
+
+################################################################################################################

@@ -2,46 +2,53 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <core/debug.h>
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define __namespace( func_name ) core##_##Event##func_name
+
 #define MAX_CALLBACKS 32
 
-static struct {
+static struct 
+{
     CallbackEntry callbacks[MAX_CALLBACKS];
-    int count;
-    int initialized;
+    i32 count;
+    u8 initialized;
 } eventSystem = {0};
 
-void event_init()
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+u8 __namespace( Init ) ( )
 {
-    if (eventSystem.initialized) {
-        return;
-    }
+    ASSERT( eventSystem.initialized != True );
     
-    memset(&eventSystem, 0, sizeof(eventSystem));
-    eventSystem.initialized = 1;
+    memset( &eventSystem, 0, sizeof( eventSystem ) );
+    eventSystem.initialized = True;
+
+    return True;
 }
 
-void event_shutdown()
+void __namespace( Shutdown ) ()
 {
-    if (!eventSystem.initialized) {
-        return;
-    }
-    
+ //   ASSERT( eventSystem.initialized != True );
+   
     memset(&eventSystem, 0, sizeof(eventSystem));
-    eventSystem.initialized = 0;
+    eventSystem.initialized = False;
 }
 
-void event_registerCallback(EventType type, void (*callback)(const void* event))
+void __namespace( RegisterCallback ) ( EventType type, void ( *callback ) ( const void* event ) )
 {
-    if (!eventSystem.initialized || !callback) {
-        return;
-    }
+    ASSERT( eventSystem.initialized != True || callback );
+   
     
     if (eventSystem.count >= MAX_CALLBACKS) {
         return; // Max callbacks reached
     }
     
     // Check if callback already registered for this type
-    for (int i = 0; i < eventSystem.count; i++) {
+    for (i32 i = 0; i < eventSystem.count; i++) 
+    {
         if (eventSystem.callbacks[i].type == type && 
             eventSystem.callbacks[i].callback == callback) {
             return; // Already registered
@@ -54,19 +61,20 @@ void event_registerCallback(EventType type, void (*callback)(const void* event))
     eventSystem.count++;
 }
 
-void event_unregisterCallback(EventType type, void (*callback)(const void* event))
+void __namespace( UnregisterCallback ) ( EventType type, void ( *callback ) ( const void* event ) )
 {
-    if (!eventSystem.initialized || !callback) {
-        return;
-    }
-    
+    ASSERT( eventSystem.initialized != True || callback  );
+
     // Find and remove callback
-    for (int i = 0; i < eventSystem.count; i++) {
-        if (eventSystem.callbacks[i].type == type && 
-            eventSystem.callbacks[i].callback == callback) {
+    for ( i32 i = 0; i < eventSystem.count; i++ ) 
+    {
+        if ( eventSystem.callbacks[i].type == type && 
+            eventSystem.callbacks[i].callback == callback ) 
+            {
             
             // Shift remaining callbacks
-            for (int j = i; j < eventSystem.count - 1; j++) {
+            for ( i32 j = i; j < eventSystem.count - 1; j++ ) 
+            {
                 eventSystem.callbacks[j] = eventSystem.callbacks[j + 1];
             }
             
@@ -76,20 +84,24 @@ void event_unregisterCallback(EventType type, void (*callback)(const void* event
     }
 }
 
-void event_dispatch(const void* event)
+void __namespace( Dispache )  ( const void* event )
 {
-    if (!eventSystem.initialized || !event) {
-        return;
-    }
-    
-    // Get event type from the event structure
-    // All event types have 'type' as first member
-    EventType type = *((EventType*)event);
+    ASSERT( eventSystem.initialized != True || event );
+
+    EventType type = *( ( EventType* )event );
     
     // Call all registered callbacks for this event type
-    for (int i = 0; i < eventSystem.count; i++) {
-        if (eventSystem.callbacks[i].type == type) {
-            eventSystem.callbacks[i].callback(event);
+    for ( i32 i = 0; i < eventSystem.count; i++ )
+    {
+        if ( eventSystem.callbacks[i].type == type ) 
+        {
+            eventSystem.callbacks[i].callback( event );
         }
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#undef __namespace
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
