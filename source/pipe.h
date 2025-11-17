@@ -30,7 +30,8 @@
     #error "Unsupported platform"
 #endif
 
-// Compiler detection
+
+
 #if defined(_MSC_VER)
     #define COMPILER_MSVC 1
     #define COMPILER_GCC 0

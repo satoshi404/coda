@@ -1,6 +1,5 @@
-
 #include <platform/window/factory.h>
-
+#include <platform/glx/factory.h>
 #include <pipe.h>
 #include <core/debug.h>
 #include <core/event.h>
@@ -8,22 +7,14 @@
 
 #if PIPE_LINUX
 
-/* Use namespace */
 #define __namespace( func_name ) platform##_##Window##func_name
 
 static PlatformWindowState windowState = {0};
 
-static Display*     display         = NULL;
-static XVisualInfo *visual          = NULL;
-static Window       window          = 0;
-static Atom         wmDeleteMessage = 0;
-
-//static GLXContext glContext = NULL;
-
 #include <string.h>
+#include <time.h>
 
 #define CLOCK_MONOTONIC ( 1 )
-#include <time.h>
 
 static u32 getTimestamp( void )
 {
@@ -32,114 +23,119 @@ static u32 getTimestamp( void )
     return ( u32 )( ts.tv_sec * 1000 + ts.tv_nsec / 1000000 );
 }
 
+//extern u8 platform_RenderCreateContext(void);
+
+PlatformWindowRendererContext ctx = {0};
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 u8 __namespace( Init ) ( void )
 {
+    //PlatformContext* ctx = platform_GetContext();
+
     windowState.Width              = DEFAULT_WINDOW_WIDTH;
     windowState.Height             = DEFAULT_WINDOW_HEIGHT;
     windowState.Caption            = ( i_char* ) DEFAULT_CAPTION;
     windowState.Running            = True;
     windowState.NativeWindowHandle = NULL;
 
-    if ( !display ) {
-        display = XOpenDisplay( NULL );
-        CHECK_NULL_RET( display, False );   }
-    
-    // TODO: Support OPENGL || VULKAN
-    visual = ( XVisualInfo* ) malloc( sizeof( XVisualInfo ) );
-    visual->depth = 0;
-    visual->visual = NULL;
+    //if (!platform_ContextInit() ) {
+    //    return False;
+    //}
 
-    int screen = DefaultScreen( display );
-    visual     = XGetVisualInfo(
-        display, 
-        VisualScreenMask,
-        &(XVisualInfo) { .screen = screen }, 
-        &(int){1}
+    if ( !ctx.display ) {
+        ctx.display = XOpenDisplay( NULL );
+        CHECK_NULL_RET( ctx.display, False );
+    }
+    
+    ctx.screen = DefaultScreen( ctx.display );
+    
+    if (!platform_GlxInit()) {
+        LOG_ERROR("Failed to initialize render backend");
+        XCloseDisplay(ctx.display);
+        ctx.display = NULL;
+        return False;
+    }
+
+    ctx.colormap = XCreateColormap(
+        ctx.display,
+        RootWindow(ctx.display, ctx.screen),
+        ctx.visual->visual, 
+        AllocNone
     );
-    
-    if (!visual) { LOG_ERROR( "Failed to get default visual" ); return False; }
 
-    /* ---- window attributes ------------------------------------------ */
     XSetWindowAttributes attrs = {0};
     
-    attrs.event_mask = 
+    attrs.event_mask =
         ExposureMask       | KeyPressMask   | KeyReleaseMask   |
         StructureNotifyMask| ButtonPressMask| ButtonReleaseMask|
         PointerMotionMask  | FocusChangeMask;
 
-    attrs.background_pixel = WhitePixel(display, screen);
-    attrs.border_pixel     = BlackPixel(display, screen);
-    attrs.colormap         = XCreateColormap(
-                                            display,
-                                            RootWindow(display, screen),
-                                            visual->visual, 
-                                            AllocNone
-                            );
+    attrs.background_pixel = BlackPixel(ctx.display, ctx.screen);
+    attrs.border_pixel     = BlackPixel(ctx.display, ctx.screen);
+    attrs.colormap         = ctx.colormap;
     
-    window = XCreateWindow( 
-        display, 
-        DefaultRootWindow(display), 
-        0, 0, 
+    ctx.window = XCreateWindow( 
+        ctx.display, 
+        RootWindow(ctx.display, ctx.screen), 
+        windowState.x, windowState.y, 
         windowState.Width, 
         windowState.Height, 
         0, 
-        visual->depth,
+        ctx.visual->depth,
         InputOutput, 
-        visual->visual,
+        ctx.visual->visual,
         CWBackPixel | CWBorderPixel | CWColormap | CWEventMask,
         &attrs
     );
     
-    windowState.NativeWindowHandle = ( ptr ) ( uintptr_t )window;
+    windowState.NativeWindowHandle = ( ptr )( uintptr_t )ctx.window;
     
-    XSelectInput(   
-        display, window, 
-        KeyPressMask        | KeyReleaseMask    |        // Keyboard events
-        StructureNotifyMask |                            // Window resize events
-        ExposureMask        |                            // Window expose events
-        ButtonPressMask     | ButtonReleaseMask |        // Mouse button events
-        PointerMotionMask 
-    );
+    ctx.wmDeleteMessage = XInternAtom( ctx.display, "WM_DELETE_WINDOW", False );
+    XSetWMProtocols( ctx.display, ctx.window, &ctx.wmDeleteMessage, 1 );
+    
+    XStoreName( ctx.display, ctx.window, (char*)windowState.Caption );
+    XMapWindow( ctx.display, ctx.window );
+    XFlush( ctx.display );
 
-    wmDeleteMessage = XInternAtom( display, "WM_DELETE_WINDOW", False );
-    XSetWMProtocols( 
-        display, 
-        window, 
-        &wmDeleteMessage, 
-        1
-    );
-
-    XStoreName( display, window, (char*)windowState.Caption );
-    XMapWindow( display, window );
-
+    if (!platform_GlxCreateContext()) {
+        LOG_ERROR("Failed to create render context");
+        XDestroyWindow(ctx.display, ctx.window);
+        XCloseDisplay(ctx.display);
+        return False;
+    }
+    
+    LOG_INFO("Window initialized: %dx%d", windowState.Width, windowState.Height);
+    
     return True;
 }
 
 void __namespace( Free ) ( void )
 {
-    ASSERT( display != NULL );
-
+   // PlatformContext* ctx = platform_GetContext();
+    
     windowState.Running = False;
     
-    XCloseDisplay( display) ;
-    display = NULL;
-
-    /* Check again  */
-    if ( visual != NULL ) XFree( visual );
+    if (ctx.display) {
+        XCloseDisplay( ctx.display );
+        ctx.display = NULL;
+    }
+    
+    platform_GlxCleanUp();
+    //platform_ContextFree();
     
     LOG_INFO( "Window_Platform ( Free )" );
 }
 
 void __namespace( Poll ) ( void )
 {
-    ASSERT( display != NULL );
+    //PlatformContext* ctx = platform_GetContext();
+    ASSERT( ctx.display != NULL );
 
     XEvent event;
-    while ( XPending( display ) ) 
+    while ( XPending( ctx.display ) ) 
     {
-        XNextEvent( display, &event );
+        XNextEvent( ctx.display, &event );
 
         switch ( event.type )
         {
@@ -154,8 +150,9 @@ void __namespace( Poll ) ( void )
 
                 core_EventDispache( &kbEvent );
 
-                if ( event.type == KeyPress && event.xkey.keycode == 9 ) windowState.Running = False;
-                
+                if ( event.type == KeyPress && event.xkey.keycode == 9 ) 
+                    windowState.Running = False;
+
                 break;
             }
 
@@ -166,6 +163,8 @@ void __namespace( Poll ) ( void )
                 {
                     windowState.Width = event.xconfigure.width;
                     windowState.Height = event.xconfigure.height;
+                    windowState.x = event.xconfigure.x;
+                    windowState.y = event.xconfigure.y;
                     
                     WindowEvent winEvent;
                     winEvent.type = EVENT_TYPE_WINDOW;
@@ -175,9 +174,7 @@ void __namespace( Poll ) ( void )
                     
                     core_EventDispache( &winEvent );
                     
-                    // TODO: glx make this
-                        // ** Update viewport
-                        // ** glViewport(0, 0, windowState.Width, windowState.Height);
+                    platform_GlxResize(windowState.Width, windowState.Height);
                 }
                 break;
             }
@@ -208,7 +205,6 @@ void __namespace( Poll ) ( void )
                 }
                 
                 core_EventDispache( &mouseEvent );
-               
                 break;
             }
             
@@ -222,13 +218,12 @@ void __namespace( Poll ) ( void )
                 mouseEvent.button = MOUSE_BUTTON_LEFT; 
                 
                 core_EventDispache( &mouseEvent );
-
                 break;
             }
             
             case ClientMessage:
             {
-                if ((Atom)event.xclient.data.l[0] == wmDeleteMessage) {
+                if ((Atom)event.xclient.data.l[0] == ctx.wmDeleteMessage) {
                     windowState.Running = False;
                 }
                 break;
@@ -238,8 +233,6 @@ void __namespace( Poll ) ( void )
                 break;
         }
     }
-
-    //LOG_INFO( "Window_Platform ( Poll )" );
 }
 
 const i_char* __namespace( GetCaption ) ( void )
@@ -249,35 +242,29 @@ const i_char* __namespace( GetCaption ) ( void )
 
 i32 __namespace( GetHeight ) ( void ) 
 {
-    ASSERT( display != NULL );
     return windowState.Height;
 }
 
 i32 __namespace( GetWidth ) ( void ) 
 {
-    ASSERT( display != NULL );
     return windowState.Width;
 }
 
 PlatformWindowState __namespace( GetState )  ( void )
 {
-    ASSERT( display != NULL );
     return windowState;
 }
 
 void __namespace( Shutdown ) ( void )
 {
-    ASSERT( display != NULL );    
-
-    if (display) {
-        XDestroyWindow(display, window);
-        XFlush(display);
-    }
-
-    if ( visual != NULL ) 
-    {
-        XFree( visual );
-        visual = NULL;
+    //PlatformContext* ctx = platform_GetContext();
+    
+    platform_GlxCleanUp();
+    //platform_RenderCleanUp();
+    
+    if (ctx.display && ctx.window) {
+        XDestroyWindow(ctx.display, ctx.window);
+        XFlush(ctx.display);
     }
 
     LOG_INFO("Platform Window ( ShutDown )");
@@ -285,26 +272,26 @@ void __namespace( Shutdown ) ( void )
 
 u8  __namespace( IsRunning ) ( void ) 
 {
-    ASSERT( display != NULL );
     return windowState.Running; 
 }
 
 void __namespace( SwapBuffers ) ( void )
 {
-    ASSERT( display != NULL );
-    // /glXSwapBuffers( display, window );
+
+    platform_GlxSwapBuffers();
+    //platform_RenderSwapBuffers();
 }
 
-void __namespace( SetWindowSize ) ( const i32 width, const i32 height )
+void __namespace( SetSize ) ( const i32 width, const i32 height )
 {
-    ASSERT( display != NULL );
-
+   // PlatformContext* ctx = platform_GetContext();
+    
     windowState.Width  = width;
     windowState.Height = height;
-
-     if (display && window) {
-        XResizeWindow(display, window, width, height);
-        XFlush(display);
+    
+    if (ctx.display && ctx.window) {
+        XResizeWindow(ctx.display, ctx.window, width, height);
+        XFlush(ctx.display);
     }
     
     LOG_INFO("Window size set to %dx%d", width, height);
@@ -312,19 +299,27 @@ void __namespace( SetWindowSize ) ( const i32 width, const i32 height )
 
 void __namespace( GetNativeWindowHandle ) ( ptr* handle )
 {
-    ASSERT( display != NULL );
-
-    if ( handle )
-    {
+    if ( handle ) {
         *handle = windowState.NativeWindowHandle;
     }
-
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void __namespace( SetHeight ) ( u32 height )
+{
+    windowState.Height = height;
+}
+
+void __namespace( SetWidth ) ( u32 width )
+{
+    windowState.Width = width;
+}
+
+void __namespace( SetPos ) ( const u32 x, const u32 y )
+{
+    windowState.x = x;
+    windowState.y = y;
+}
 
 #undef __namespace
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#endif
+#endif /* PIPE_LINUX */

@@ -144,7 +144,7 @@ compile_source() {
     
     # Generate dependency file
     if [ "$TOOLCHAIN" != "msvc" ]; then
-        $compiler $flags -MMD -MP -MF "$dep_file" -c "$src_file" -I source -o "$obj_file"
+        $compiler $flags -MMD -MP -MF "$dep_file" -c "$src_file" -I source -I source/thirdparty -o "$obj_file"
     else
         # MSVC doesn't support -MMD
         $compiler $flags /c "$src_file" -I source /Fo:"$obj_file"

@@ -53,11 +53,11 @@ typedef struct
     i32 height;
 } WindowEvent;
 
-typedef struct 
+struct_name ( CallbackEntry )
 {
     EventType type;
     void ( *callback ) ( const void* event );
-} CallbackEntry;
+};
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

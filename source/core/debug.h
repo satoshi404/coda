@@ -8,7 +8,8 @@
 
 #include <pipe.h>
 
-// Debug levels
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 typedef enum {
     DEBUG_LEVEL_TRACE = 0,
     DEBUG_LEVEL_DEBUG = 1,
@@ -17,6 +18,8 @@ typedef enum {
     DEBUG_LEVEL_ERROR = 4,
     DEBUG_LEVEL_FATAL = 5
 } DebugLevel;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // ANSI color codes for terminal output
 #if PIPE_LINUX
@@ -40,6 +43,8 @@ typedef enum {
     #define COLOR_WHITE   ""
     #define COLOR_GRAY    ""
 #endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Global debug level (can be changed at runtime)
 static DebugLevel g_debugLevel = DEBUG_LEVEL_TRACE;
@@ -106,6 +111,8 @@ static inline void debug_log(DebugLevel level, const char* format, ...) {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Convenience macros
 #define LOG_TRACE(...) debug_log(DEBUG_LEVEL_TRACE, __VA_ARGS__)
 #define LOG_DEBUG(...) debug_log(DEBUG_LEVEL_DEBUG, __VA_ARGS__)
@@ -126,6 +133,8 @@ static inline void debug_log(DebugLevel level, const char* format, ...) {
             } \
         } while (0)
 #endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Static assert (compile-time)
 #define STATIC_ASSERT(condition, message) \
@@ -195,6 +204,8 @@ static inline void debug_log(DebugLevel level, const char* format, ...) {
         } while (0)
 #endif
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // OpenGL error checking
 #ifdef DEBUG_OPENGL
     #include <GL/gl.h>
@@ -217,7 +228,8 @@ static inline void debug_log(DebugLevel level, const char* format, ...) {
     #define CHECK_GL_ERROR() ((void)0)
 #endif
 
-// Debug break
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #if PIPE_WINDOWS && COMPILER_MSVC
     #define DEBUG_BREAK() __debugbreak()
 #elif PIPE_LINUX && (COMPILER_GCC || COMPILER_CLANG)
@@ -227,5 +239,6 @@ static inline void debug_log(DebugLevel level, const char* format, ...) {
     #define DEBUG_BREAK() raise(SIGTRAP)
 #endif
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif /* __debug_h__ */
